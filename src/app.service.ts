@@ -9,47 +9,6 @@ const nodemailer = require('nodemailer');
 
 @Injectable()
 export class AppService {
-  saveJsonToSheet = async (jsonData) => {
-    // Initialize the Sheets API client
-    const sheets = google.sheets({ version: 'v4' });
-
-    const SHEET_NAME = 'Sheet1';
-
-    // Authenticate using the service account key
-    const auth = new google.auth.JWT({
-      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-      keyFile: 'gsheet-credentials.json',
-    });
-    const response = await auth.authorize();
-    console.log('Auth', response);
-
-    // Convert JSON data to an array of rows
-    const rows = [];
-    for (const [key, value] of Object.entries(jsonData)) {
-      rows.push([key, value]);
-    }
-    console.log(rows);
-
-    // Append data to the sheet
-    await sheets.spreadsheets.values
-      .append({
-        spreadsheetId: '1hnT44Vfah4CIqGi-cMhomALW1OhAjOu-L2AIoDcaLUM',
-        range: `${SHEET_NAME}!A2:Z`,
-        valueInputOption: 'USER_ENTERED',
-        insertDataOption: 'INSERT_ROWS',
-        requestBody: {
-          values: rows,
-          range: `${SHEET_NAME}!A2:Z`,
-        },
-        access_token: response.access_token,
-      })
-      .catch((err) => {
-        throw err;
-      });
-
-    console.log('Data saved successfully!');
-  };
-
   private tempDb = [];
 
   async createRecord() {
