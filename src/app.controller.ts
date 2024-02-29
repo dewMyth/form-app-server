@@ -1,13 +1,13 @@
 /* eslint-disable prettier/prettier */
-import { Body, Controller, Get } from '@nestjs/common';
+import { Body, Controller, Get, Post } from '@nestjs/common';
 import { AppService } from './app.service';
 
-@Controller('test-controller')
+@Controller('api')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get("test")
-  getHello(@Body() testData: any): any {
-    return this.appService.getHello(testData);
+  @Post('submit')
+  createRecord() {
+    return this.appService.createRecord();
   }
 }
