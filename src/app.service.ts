@@ -1,15 +1,18 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
-/* eslint-disable @typescript-eslint/no-empty-function */
 /* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
-import { google } from 'googleapis';
 import { Logger } from '@nestjs/common';
 import { htmlTemplate } from './email.template';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { UserData, UserDataDocument } from './schema/user-data.schema';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodemailer = require('nodemailer');
 
 @Injectable()
 export class AppService {
-  private tempDb = [];
+  constructor(
+    @InjectModel(UserData.name) private userDataModel: Model<UserDataDocument>,
+  ) {}
 
   async createRecord() {
     const userData = {
@@ -18,39 +21,51 @@ export class AppService {
     };
 
     // Step 1 - Generate UserId
-    const currentId = this.tempDb.length + 1;
+    // Sub Step 1 - Find the last created document
+    const lastCreatedUserData = await this.userDataModel
+      .findOne()
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    const currentId = lastCreatedUserData ? lastCreatedUserData?.userId + 1 : 1;
 
     // Step 2 - Save the record in db
-    this.tempDb.push({
+    const newUserData = {
       ...userData,
       userId: currentId,
+    };
+    const savedDocument = await this.userDataModel.create({
+      ...newUserData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
-    console.log(this.tempDb);
+    const { email } = savedDocument;
 
     // Step 3 - If record saved, send the mail
-    const isMailSent = await this.sendEmail(
-      userData.email,
-      this.tempDb[this.tempDb.length - 1],
-    );
+    const isMailSent = await this.sendEmail(email, savedDocument);
 
     Logger.debug(
       `Email sent to ${userData.email} with ${currentId} is ${isMailSent}`,
     );
 
+    if (isMailSent) {
+      await this.userDataModel.findByIdAndUpdate(savedDocument._id, {
+        isMailSent: true,
+        updatedAt: new Date(),
+      });
+    } else {
+      throw new Error(`Unable to send the email`);
+    }
+
     // Step 4 - Check whether the email has been sent
 
     // Step 5 - If so update the isMailSent in db
-
-    // this.saveJsonToSheet(jsonData)
-    //   .then(() => console.log('Done!'))
-    //   .catch((error) => console.error(error));
   }
 
   // Send Email to the enterd User Email
   async sendEmail(email: string, userData: any) {
     const { userId } = userData;
-    let response;
 
     Logger.log(`Start sending email to : ${email} with ticket id : ${userId}`);
 
