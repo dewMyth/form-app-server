@@ -15,6 +15,9 @@ export class UserData {
   @Prop()
   userId: number;
 
+  @Prop()
+  paymentVerificationUrl: string;
+
   @Prop({ default: false })
   isMailSent: boolean;
 
