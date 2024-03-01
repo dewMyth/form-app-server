@@ -1,13 +1,25 @@
 /* eslint-disable prettier/prettier */
-import { Body, Controller, Get, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { AppService } from './app.service';
+import { UserDataInputDto } from './dto/user-data.input';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('api')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
   @Post('submit')
-  createRecord() {
-    return this.appService.createRecord();
+  @UseInterceptors(FileInterceptor('paymentImage'))
+  createRecord(
+    @Body() userData: UserDataInputDto,
+    @UploadedFile() paymentImage: Express.Multer.File,
+  ) {
+    return this.appService.createRecord(userData, paymentImage);
   }
 }
