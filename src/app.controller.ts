@@ -9,6 +9,7 @@ import {
 import { AppService } from './app.service';
 import { UserDataInputDto } from './dto/user-data.input';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { CreateRecordResponse } from './types/CreateRecordResponse.type';
 
 @Controller('api')
 export class AppController {
@@ -19,7 +20,7 @@ export class AppController {
   createRecord(
     @Body() userData: UserDataInputDto,
     @UploadedFile() paymentImage: Express.Multer.File,
-  ) {
+  ): CreateRecordResponse | any {
     return this.appService.createRecord(userData, paymentImage);
   }
 }
