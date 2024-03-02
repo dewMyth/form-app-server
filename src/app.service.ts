@@ -57,31 +57,40 @@ export class AppService {
     );
 
     // Step 2 - Save the image in cloud and generate url
-    // Set timestamp for unique filename
-    const timestamp = new Date().toISOString().replace(/\.[0-9]{3}Z/, '');
-    const fullNameWithNoSpace = userData.name.replace(' ', '_');
-    const fileNamePrefix = fullNameWithNoSpace + ' - ' + timestamp;
 
-    Logger.log(
-      `Generated filename prefix : ${fileNamePrefix} to the user : ${userData.email}`,
-    );
+    let paymentVerificationResourceUrl;
 
-    const paymentVerificationResourceUrl = await this.uploadFile(
-      paymentImage,
-      fileNamePrefix,
-    ).catch((err) => {
-      throw new HttpException(
-        {
-          status: HttpStatus.INTERNAL_SERVER_ERROR,
-          error: `${err.message}`,
-        },
-        HttpStatus.INTERNAL_SERVER_ERROR,
+    if (paymentImage) {
+      Logger.log(
+        `Found user uploaded file : Starting the upload of the payment verification for : ${userData.email}`,
       );
-    });
+
+      // Set timestamp for unique filename
+      const timestamp = new Date().toISOString().replace(/\.[0-9]{3}Z/, '');
+      const fullNameWithNoSpace = userData.name.replace(' ', '_');
+      const fileNamePrefix = fullNameWithNoSpace + ' - ' + timestamp;
+
+      Logger.log(
+        `Generated filename prefix : ${fileNamePrefix} to the user : ${userData.email}`,
+      );
+
+      paymentVerificationResourceUrl = await this.uploadFile(
+        paymentImage,
+        fileNamePrefix,
+      ).catch((err) => {
+        throw new HttpException(
+          {
+            status: HttpStatus.INTERNAL_SERVER_ERROR,
+            error: `${err.message}`,
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
+      });
+    }
 
     if (!paymentVerificationResourceUrl) {
       Logger.warn(
-        `Unable to generate the public url for the uploaded image starts with : ${fileNamePrefix}`,
+        `Unable to generate the public url for the uploaded image starts with : : ${userData.email}`,
       );
     }
     // Step 3 - Save the record in db
