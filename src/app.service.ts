@@ -1,5 +1,5 @@
 /* eslint-disable prettier/prettier */
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
 import { htmlTemplate } from './email.template';
 import { InjectModel } from '@nestjs/mongoose';
@@ -26,6 +26,22 @@ export class AppService {
     userData: UserDataInputDto,
     paymentImage: Express.Multer.File,
   ) {
+    // Check whether the userdata already exists with the user email
+    const isUserExist = await this.userDataModel.findOne({
+      email: userData.email,
+    });
+
+    if (isUserExist) {
+      Logger.log(`User already exist : ${userData.email}`);
+      throw new HttpException(
+        {
+          status: HttpStatus.BAD_REQUEST,
+          error: `User already exist : ${userData.email}`,
+        },
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     Logger.log(`Start creating record for the ${userData.name}`);
 
     // Step 1 - Generate UserId
@@ -53,7 +69,15 @@ export class AppService {
     const paymentVerificationResourceUrl = await this.uploadFile(
       paymentImage,
       fileNamePrefix,
-    );
+    ).catch((err) => {
+      throw new HttpException(
+        {
+          status: HttpStatus.INTERNAL_SERVER_ERROR,
+          error: `${err.message}`,
+        },
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    });
 
     if (!paymentVerificationResourceUrl) {
       Logger.warn(
@@ -82,7 +106,13 @@ export class AppService {
         Logger.error(
           `Unable to save the record in database. Reason : ${err.message}`,
         );
-        throw err;
+        throw new HttpException(
+          {
+            status: HttpStatus.INTERNAL_SERVER_ERROR,
+            error: `${err.message}`,
+          },
+          HttpStatus.INTERNAL_SERVER_ERROR,
+        );
       });
 
     const { email } = savedDocument;
@@ -108,6 +138,26 @@ export class AppService {
         });
     } else {
       throw new Error(`Unable to send the email`);
+    }
+
+    if (paymentVerificationResourceUrl && isMailSent) {
+      return {
+        status: HttpStatus.CREATED,
+        message: `User created successfully! For : ${savedDocument.email}`,
+      };
+    } else {
+      if (!paymentVerificationResourceUrl) {
+        return {
+          status: HttpStatus.OK,
+          message: `User created, but Payment Verification failed ! For : ${savedDocument.email}`,
+        };
+      }
+      if (!isMailSent) {
+        return {
+          status: HttpStatus.OK,
+          messamessagesge: `User created, but isMailSent : ${isMailSent} ! For : ${savedDocument.email}`,
+        };
+      }
     }
   }
 
