@@ -17,12 +17,19 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodemailer = require('nodemailer');
 import { createClient } from '@supabase/supabase-js';
+import { Cron } from '@nestjs/schedule';
 
 @Injectable()
 export class AppService {
   constructor(
     @InjectModel(UserData.name) private userDataModel: Model<UserDataDocument>,
   ) {}
+
+  // For Keep Render Host Alive
+  @Cron('*/14 * * * *')
+  handleCron() {
+    Logger.verbose('To Keep the Server Alive!');
+  }
 
   // Create Supabase client
   supabase = createClient(
