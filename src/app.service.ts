@@ -26,7 +26,7 @@ export class AppService {
   ) {}
 
   // For Keep Render Host Alive
-  @Cron('*/14 * * * *')
+  @Cron('*/5 * * * *')
   handleCron() {
     Logger.verbose('To Keep the Server Alive!');
   }
