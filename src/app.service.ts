@@ -1,11 +1,19 @@
 /* eslint-disable prettier/prettier */
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { Logger } from '@nestjs/common';
 import { htmlTemplate } from './email.template';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { UserData, UserDataDocument } from './schema/user-data.schema';
-import { UserDataInputDto } from './dto/user-data.input';
+import {
+  CreateUserDataInputDto,
+  UpdateUserDataInputDto,
+} from './dto/user-data.input';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const nodemailer = require('nodemailer');
 import { createClient } from '@supabase/supabase-js';
@@ -22,8 +30,9 @@ export class AppService {
     process.env.SUPABASE_API_KEY,
   );
 
+  // Create Record
   async createRecord(
-    userData: UserDataInputDto,
+    userData: CreateUserDataInputDto,
     paymentImage: Express.Multer.File,
   ) {
     // Check whether the userdata already exists with the user email
@@ -257,5 +266,102 @@ export class AppService {
         reject(error);
       }
     });
+  }
+
+  async updateRecord(
+    userEmail,
+    updatedUserData: UpdateUserDataInputDto,
+    paymentImage: Express.Multer.File,
+  ) {
+    let paymentVerificationResourceUrl;
+    let latestRecord;
+
+    Logger.log(`Start updating user data for user : ${userEmail}`);
+
+    // Find existing Record by email
+    const existingRecord = await this.userDataModel
+      .findOne({
+        email: userEmail,
+      })
+      .catch((err) => {
+        Logger.error(
+          `Unable to find a user with ${userEmail}. Reason : ${err.message}`,
+        );
+        throw new InternalServerErrorException();
+      });
+
+    // Construct updated object
+    if (existingRecord) {
+      Logger.log(
+        `Found the record for : ${userEmail} that need to be updated!`,
+      );
+
+      if (paymentImage) {
+        Logger.log(
+          `Found the payment image upload change for the : ${userEmail}. Processing file upload...`,
+        );
+
+        // Set timestamp for unique filename
+        const timestamp = new Date().toISOString().replace(/\.[0-9]{3}Z/, '');
+        const userName = updatedUserData.name
+          ? updatedUserData.name
+          : existingRecord.name;
+        const fullNameWithNoSpace = userName.replace(' ', '_');
+        const fileNamePrefix = fullNameWithNoSpace + ' - ' + timestamp;
+
+        paymentVerificationResourceUrl = await this.uploadFile(
+          paymentImage,
+          fileNamePrefix,
+        );
+      }
+
+      if (paymentImage && paymentVerificationResourceUrl) {
+        Logger.log(`Payment Image upload Successful for the : ${userEmail}.`);
+
+        latestRecord = {
+          ...updatedUserData,
+          paymentVerificationUrl: paymentVerificationResourceUrl,
+          updatedAt: new Date(),
+        };
+      } else {
+        latestRecord = {
+          ...updatedUserData,
+          updatedAt: new Date(),
+        };
+      }
+    }
+
+    Logger.log(
+      `The following userdata will be updated on user : ${userEmail}. Data =>  ${JSON.stringify(
+        latestRecord,
+      )}`,
+    );
+
+    // Save to database
+    const updateResponse = await this.userDataModel.updateOne(latestRecord);
+
+    if (updateResponse.modifiedCount) {
+      Logger.log(`Updating the data is successfull for : ${userEmail}.`);
+
+      return {
+        status: HttpStatus.CREATED,
+        message: `User data for user : ${userEmail} is updated Successfully!`,
+      };
+    }
+  }
+
+  async viewAllRecords(): Promise<UserData[]> {
+    Logger.log(`Start getting all records...`);
+    const response = await this.userDataModel.find().catch((err) => {
+      Logger.log(`Failed to fetch`);
+      throw new InternalServerErrorException(err);
+    });
+
+    if (response) {
+      Logger.log(
+        `Successfully fetched ${response.length} records from the database`,
+      );
+      return response;
+    }
   }
 }

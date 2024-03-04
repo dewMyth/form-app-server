@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
-import { IsEmail, IsString, IsNotEmpty } from 'class-validator';
+import { IsEmail, IsString, IsNotEmpty, IsOptional } from 'class-validator';
 
-export class UserDataInputDto {
+export class CreateUserDataInputDto {
   @IsString()
   @IsNotEmpty()
   readonly name: string;
@@ -10,5 +10,19 @@ export class UserDataInputDto {
   @IsNotEmpty()
   readonly email: string;
 
+  @IsOptional()
+  readonly paymentImage: any;
+}
+
+export class UpdateUserDataInputDto {
+  @IsEmail()
+  @IsNotEmpty()
+  readonly email: string;
+
+  @IsString()
+  @IsOptional()
+  readonly name: string;
+
+  @IsOptional()
   readonly paymentImage: any;
 }
